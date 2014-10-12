@@ -4,7 +4,7 @@ __author__ = 'Henry Borchers'
 from genericpath import getsize
 import hashlib
 from os.path import splitext
-from re import findall, DOTALL,compile, MULTILINE, search
+from re import DOTALL, search
 from xml.dom.minidom import parseString
 from subprocess import Popen, PIPE, STDOUT
 
@@ -513,7 +513,7 @@ class FormatException(Exception):
         return "Format is not a video."
 
 
-class AVMetadata():
+class mediaObject():
     def __init__(self, fileName):
         self.fileName = fileName
         if self.validateFileType():
@@ -527,7 +527,7 @@ class AVMetadata():
 #################################
 #   Utility methods
 #################################
-    def sizeof_human(self, num):
+    def sizeofHuman(self, num):
         num = int(num)
         for x in ['bytes', 'KB', 'MB', 'GB', 'TB']:
             if num < 1024.0:
@@ -552,7 +552,7 @@ class AVMetadata():
         return getsize(self.fileName)
 
     def getFileSizeH(self):
-        return self.sizeof_human(getsize(self.fileName))
+        return self.sizeofHuman(getsize(self.fileName))
 
     def getTotalRunningTimeRaw(self):
         return search('Duration: ((\d{0,9}):(\d{0,9}):(\d{0,9}).(\d{0,9}))', self.rawdata).group(1)
@@ -687,7 +687,7 @@ class AVMetadata():
 
     def getVideoBitRateH(self):
         if self.getFormat() == "video":
-            return self.sizeof_human(self.getVideoBitRate())
+            return self.sizeofHuman(self.getVideoBitRate())
         else:
             raise FormatException()
 
@@ -730,3 +730,6 @@ class AVMetadata():
                 self.sha1.update(chunk)
 
         return self.sha1.hexdigest()
+
+
+# TODO Add Adobe's XMP comments
