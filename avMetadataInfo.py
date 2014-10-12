@@ -3,7 +3,7 @@ __author__ = 'Henry Borchers'
 
 from genericpath import getsize
 import hashlib
-from os.path import splitext
+from os.path import splitext, basename
 from re import DOTALL, search
 from xml.dom.minidom import parseString
 from subprocess import Popen, PIPE, STDOUT
@@ -339,12 +339,12 @@ CHROMA_SUB_SAMPLING= {"yuv420p": "4:2:0",
 AUDIO_BIT_DEPTHS = {"u8": "8",
                     "s16": "16",
                     "s32": "24",
-                    "flt": "",
+                    "flt": "32",
                     "dbl": "",
                     "u8p": "8",
                     "s16p": "16",
-                    "s32p": " 24",
-                    "fltp": "",
+                    "s32p": "24",
+                    "fltp": "32",
                     "dblp": ""}
 
 AUDIO_CODECS = {"8svx_exp": "8SVX",
@@ -454,26 +454,26 @@ AUDIO_CODECS = {"8svx_exp": "8SVX",
                 "pcm_f64le": "PCM 64-bit floating point little-endian",
                 "pcm_lxf": "PCM signed 20-bit little-endian planar",
                 "pcm_mulaw": "PCM mu-law",
-                "pcm_s16be": "PCM signed 16-bit big-endian",
-                "pcm_s16be_planar": "PCM signed 16-bit big-endian planar",
-                "pcm_s16le": "PCM signed 16-bit little-endian",
-                "pcm_s16le_planar": "PCM signed 16-bit little-endian planar",
-                "pcm_s24be": "PCM signed 24-bit big-endian",
-                "pcm_s24daud": "PCM D-Cinema audio signed 24-bit",
-                "pcm_s24le": "PCM signed 24-bit little-endian",
-                "pcm_s24le_planar": "PCM signed 24-bit little-endian planar",
-                "pcm_s32be": "PCM signed 32-bit big-endian",
-                "pcm_s32le": "PCM signed 32-bit little-endian",
-                "pcm_s32le_planar": "PCM signed 32-bit little-endian planar",
+                "pcm_s16be": "PCM 16-bit",
+                "pcm_s16be_planar": "PCM 16-bit",
+                "pcm_s16le": "PCM 16-bit ",
+                "pcm_s16le_planar": "PCM 16-bit",
+                "pcm_s24be": "PCM 24-bit",
+                "pcm_s24daud": "PCM D-Cinema 24-bit",
+                "pcm_s24le": "PCM 24-bit",
+                "pcm_s24le_planar": "PCM 24-bit",
+                "pcm_s32be": "PCM 32-bit",
+                "pcm_s32le": "PCM 32-bit",
+                "pcm_s32le_planar": "PCM 32-bit",
                 "pcm_s8": "PCM signed 8-bit",
-                "pcm_s8_planar": "PCM signed 8-bit planar",
-                "pcm_u16be": "PCM unsigned 16-bit big-endian",
-                "pcm_u16le": "PCM unsigned 16-bit little-endian",
-                "pcm_u24be": "PCM unsigned 24-bit big-endian",
-                "pcm_u24le": "PCM unsigned 24-bit little-endian",
-                "pcm_u32be": "PCM unsigned 32-bit big-endian",
-                "pcm_u32le": "PCM unsigned 32-bit little-endian",
-                "pcm_u8": "PCM unsigned 8-bit",
+                "pcm_s8_planar": "PCM 8-bit ",
+                "pcm_u16be": "PCM 16-bit",
+                "pcm_u16le": "PCM 16-bit",
+                "pcm_u24be": "PCM 24-bit",
+                "pcm_u24le": "PCM 24-bit",
+                "pcm_u32be": "PCM 32-bit",
+                "pcm_u32le": "PCM 32-bit",
+                "pcm_u8": "PCM 8-bit",
                 "pcm_zork": "PCM Zork",
                 "qcelp": "QCELP",
                 "qdm2": "QDesign Music Codec 2",
@@ -507,10 +507,10 @@ AUDIO_CODECS = {"8svx_exp": "8SVX",
                 "xan_dpcm": "DPCM Xan"}
 
 class FormatException(Exception):
-    # def __init__(self):
-    #     self.value = value
+    def __init__(self, value):
+         self.value = value
     def __str__(self):
-        return "Format is not a video."
+        return self.value
 
 
 class mediaObject():
@@ -521,7 +521,7 @@ class mediaObject():
             command.append(self.fileName)
             p = Popen(command, stdout=PIPE, stderr=STDOUT, bufsize=0)
             self.rawdata = p.communicate()[0]
-            self.fileXML = search('^(<\?xml).*(</ffprobe>)', self.rawdata, DOTALL).group(0)
+            self.fileXML = str(search('(<\?xml).*(</ffprobe>)', self.rawdata, DOTALL).group(0))
             self.xmlDom = parseString(self.fileXML)
 
 #################################
@@ -535,6 +535,8 @@ class mediaObject():
             num /= 1024.0
 
     # General file property methods
+    def getFileName(self):
+        return basename(self.fileName)
     def getFormat(self):
 
         #check if it's an audio format
@@ -555,22 +557,25 @@ class mediaObject():
         return self.sizeofHuman(getsize(self.fileName))
 
     def getTotalRunningTimeRaw(self):
+
         return search('Duration: ((\d{0,9}):(\d{0,9}):(\d{0,9}).(\d{0,9}))', self.rawdata).group(1)
 
     def validateFileType(self):
         # check file extensions
         validation = True
         valid_extension = False
+        fileExtenion = splitext(self.fileName)[1]
         for extension in VALID_VIDEO_FILE_EXTENSIONS:
-            if splitext(self.fileName)[1] == extension:
+            if fileExtenion == extension:
                 valid_extension = True
                 break
         for extension in VALID_AUDIO_FILE_EXTENSIONS:
-            if splitext(self.fileName)[1] == extension:
+            if fileExtenion == extension:
                 valid_extension = True
                 break
         if not valid_extension:
-            validation = False
+            raise FormatException(fileExtenion + " is not an audio or video file.")
+            # validation = False
         return validation
 
 #################################
@@ -596,12 +601,12 @@ class mediaObject():
     def getAudioCodec(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
             if stream.getAttribute("codec_type") == "audio":
-                return stream.getAttribute("codec_name")
+                return str(AUDIO_CODECS[stream.getAttribute("codec_name")])
 
     def getAudioCodecLongName(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
             if stream.getAttribute("codec_type") == "audio":
-                return stream.getAttribute("codec_long_name")
+                return str(stream.getAttribute("codec_long_name"))
 
     def getAudioBitDepth(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
@@ -623,33 +628,33 @@ class mediaObject():
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return stream.getAttribute("codec_name")
+                    return str(stream.getAttribute("codec_name"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoCodecLongName(self):
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return stream.getAttribute("codec_long_name")
+                    return str(stream.getAttribute("codec_long_name"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoCodecTagString(self):
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return stream.getAttribute("codec_tag_string")
+                    return str(stream.getAttribute("codec_tag_string"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoCodecTag(self):
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return stream.getAttribute("codec_tag")
+                    return str(stream.getAttribute("codec_tag"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoFrameRate(self):
         if self.getFormat() == "video":
@@ -659,23 +664,23 @@ class mediaObject():
                     frameRate = float(rawFramerate.group(1))/float(rawFramerate.group(2))
                     return frameRate
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoColorSpace(self):
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return COLORSPACES[stream.getAttribute("pix_fmt")]
+                    return str(COLORSPACES[stream.getAttribute("pix_fmt")])
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoColorSampling(self):
         if self.getFormat() == "video":
             for stream in self.xmlDom.getElementsByTagName('stream'):
                 if stream.getAttribute("codec_type") == "video":
-                    return CHROMA_SUB_SAMPLING[stream.getAttribute("pix_fmt")]
+                    return str(CHROMA_SUB_SAMPLING[stream.getAttribute("pix_fmt")])
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoBitRate(self):
         if self.getFormat() == "video":
@@ -683,19 +688,19 @@ class mediaObject():
                 if stream.getAttribute("codec_type") == "video":
                     return int(stream.getAttribute("bit_rate"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoBitRateH(self):
         if self.getFormat() == "video":
-            return self.sizeofHuman(self.getVideoBitRate())
+            return str(self.sizeofHuman(self.getVideoBitRate()))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoResolution(self):
         if self.getFormat() == "video":
             return str(self.getVideoResolutionHeight()) + "x" + str(self.getVideoResolutionWidth())
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoResolutionHeight(self):
         if self.getFormat() == "video":
@@ -703,7 +708,7 @@ class mediaObject():
                 if stream.getAttribute("codec_type") == "video":
                     return int(stream.getAttribute("height"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
     def getVideoResolutionWidth(self):
         if self.getFormat() == "video":
@@ -711,7 +716,7 @@ class mediaObject():
                 if stream.getAttribute("codec_type") == "video":
                     return int(stream.getAttribute("width"))
         else:
-            raise FormatException()
+            raise FormatException("Format is not a video.")
 
 #################################
 #   Checksum methods
