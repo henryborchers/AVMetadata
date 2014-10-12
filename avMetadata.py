@@ -175,7 +175,7 @@ COLORSPACES = {"yuv420p": "YUV",
                     "bayer_grbg16le": "",
                     "bayer_grbg16be": ""}
 
-CHROMA_SUBSAMPLING= {"yuv420p": "4:2:0",
+CHROMA_SUB_SAMPLING= {"yuv420p": "4:2:0",
                     "yuyv422": "4:2:2",
                     "rgb24": "",
                     "bgr24": "",
@@ -335,6 +335,17 @@ CHROMA_SUBSAMPLING= {"yuv420p": "4:2:0",
                     "bayer_grbg16le": "",
                     "bayer_grbg16be": ""}
 
+AUDIO_BIT_DEPTHS = {"u8": "8",
+                    "s16": "16",
+                    "s32": "24",
+                    "flt": "",
+                    "dbl": "",
+                    "u8p": "8",
+                    "s16p": "16",
+                    "s32p": " 24",
+                    "fltp": "",
+                    "dblp": ""}
+
 class AVMetadata():
     def __init__(self, fileName):
         self.fileName = fileName
@@ -427,8 +438,7 @@ class AVMetadata():
     def getAudioBitDepth(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
             if stream.getAttribute("codec_type") == "audio":
-                rawdata = stream.getAttribute("sample_fmt")
-                if rawdata == "s16p": return 16
+                return int(AUDIO_BIT_DEPTHS[stream.getAttribute("sample_fmt")])
 
     def getVideoCodec(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
@@ -465,7 +475,7 @@ class AVMetadata():
     def getVideoColorSampling(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
             if stream.getAttribute("codec_type") == "video":
-                return CHROMA_SUBSAMPLING[stream.getAttribute("pix_fmt")]
+                return CHROMA_SUB_SAMPLING[stream.getAttribute("pix_fmt")]
 
     def getVideoBitRate(self):
         for stream in self.xmlDom.getElementsByTagName('stream'):
